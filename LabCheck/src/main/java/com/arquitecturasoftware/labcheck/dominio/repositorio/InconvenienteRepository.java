@@ -10,7 +10,4 @@ import java.util.List;
 
 @Repository
 public interface InconvenienteRepository extends JpaRepository<Inconveniente, Long> {
-    List<Inconveniente> findByComputador(Computador computador);
-
-    List<Inconveniente> findByFechaReporteBetween(LocalDate inicio, LocalDate fin);
 }

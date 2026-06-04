@@ -11,5 +11,4 @@ import java.util.Optional;
 public interface ComputadorRepository extends JpaRepository<Computador, Long> {
     Optional<Computador> findByCodigoUnicoAndSala(String codigoUnico, Sala sala);
 
-    boolean existsByCodigoUnico(String codigoUnico);
 }

@@ -19,12 +19,6 @@ public interface SesionClaseRepository extends JpaRepository<SesionClase, Long> 
 
     List<SesionClase> findByProfesor(Usuario profesor);
 
-    List<SesionClase> findByProfesorAndActivaTrue(Usuario profesor);
-
     @Query("SELECT s FROM SesionClase s WHERE s.sala = :sala AND s.activa = true AND s.horaInicio < :horaFin AND s.horaFin > :horaInicio")
-    List<SesionClase> findOverlappingSessions(
-            @Param("sala") Sala sala,
-            @Param("horaInicio") LocalDateTime horaInicio,
-            @Param("horaFin") LocalDateTime horaFin
-    );
+    List<SesionClase> findOverlappingSessions(@Param("sala") Sala sala, @Param("horaInicio") LocalDateTime horaInicio, @Param("horaFin") LocalDateTime horaFin);
 }

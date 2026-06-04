@@ -12,11 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Collections;
 
-/**
- * Implementación de UserDetailsService de Spring Security.
- * Carga los datos del usuario desde la base de datos usando el correo institucional
- * como identificador de autenticación.
- */
+
 @Service
 @RequiredArgsConstructor
 public class UsuarioDetailService implements UserDetailsService {

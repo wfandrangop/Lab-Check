@@ -10,7 +10,4 @@ import java.util.Optional;
 @Repository
 public interface SalaRepository extends JpaRepository<Sala, Long> {
 
-    Optional<Sala> findByNombreCodigo(String nombreCodigo);
-
-    boolean existsByNombreCodigo(String nombreCodigo);
 }
