@@ -19,13 +19,25 @@ public class SesionClaseService {
     private final SesionClaseRepository sesionClaseRepository;
 
     @Transactional
-    public SesionClase abrirLaboratorio(Usuario profesor, Sala sala, Asignatura asignatura) {
+    public SesionClase abrirLaboratorio(Usuario profesor, Sala sala, Asignatura asignatura, LocalDateTime horaInicio) {
+        LocalDateTime horaFin = horaInicio.plusHours(2);
+
+        // Validar si existe solapamiento con otra sesión activa en la misma sala
+        List<SesionClase> solapadas = sesionClaseRepository.findOverlappingSessions(sala, horaInicio, horaFin);
+        if (!solapadas.isEmpty()) {
+            SesionClase conflicto = solapadas.get(0);
+            Usuario otroProfesor = conflicto.getProfesor();
+            throw new IllegalStateException("La sala ya está ocupada por el profesor " + 
+                    otroProfesor.getNombres() + " " + otroProfesor.getApellidos() + 
+                    " en el horario de " + conflicto.getHoraInicio().toLocalTime() + " a " + conflicto.getHoraFin().toLocalTime() + ".");
+        }
+
         SesionClase sesion = SesionClase.builder()
                 .sala(sala)
                 .profesor(profesor)
                 .asignatura(asignatura)
-                .horaInicio(LocalDateTime.now())
-                .horaFin(LocalDateTime.now().plusHours(2))
+                .horaInicio(horaInicio)
+                .horaFin(horaFin)
                 .activa(true)
                 .build();
         return sesionClaseRepository.save(sesion);

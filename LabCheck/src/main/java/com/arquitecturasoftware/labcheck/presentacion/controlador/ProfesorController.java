@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 
 
@@ -52,16 +54,25 @@ public class ProfesorController {
     @PostMapping("/activar-sesion")
     public String activarSesion(@RequestParam Long salaId,
                                 @RequestParam Long asignaturaId,
+                                @RequestParam("horaInicio") String horaInicioStr,
                                 Authentication auth,
                                 RedirectAttributes redirectAttributes) {
-        Usuario profesor = obtenerUsuarioAutenticado(auth);
-        Sala sala = salaRepository.findById(salaId)
-                .orElseThrow(() -> new IllegalArgumentException("Sala no encontrada."));
-        Asignatura asignatura = asignaturaRepository.findById(asignaturaId)
-                .orElseThrow(() -> new IllegalArgumentException("Asignatura no encontrada."));
+        try {
+            Usuario profesor = obtenerUsuarioAutenticado(auth);
+            Sala sala = salaRepository.findById(salaId)
+                    .orElseThrow(() -> new IllegalArgumentException("Sala no encontrada."));
+            Asignatura asignatura = asignaturaRepository.findById(asignaturaId)
+                    .orElseThrow(() -> new IllegalArgumentException("Asignatura no encontrada."));
 
-        sesionClaseService.abrirLaboratorio(profesor, sala, asignatura);
-        redirectAttributes.addFlashAttribute("mensaje", "Sesión activada exitosamente.");
+            LocalDateTime horaInicio = LocalDateTime.parse(horaInicioStr);
+
+            sesionClaseService.abrirLaboratorio(profesor, sala, asignatura, horaInicio);
+            redirectAttributes.addFlashAttribute("mensaje", "Sesión activada exitosamente.");
+        } catch (DateTimeParseException e) {
+            redirectAttributes.addFlashAttribute("error", "Formato de fecha y hora inválido.");
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
         return "redirect:/profesor/panel";
     }
 

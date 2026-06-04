@@ -41,10 +41,18 @@ public class AsistenciaService {
                     "El registro de asistencia está cerrado para este laboratorio.");
         }
 
-        // 2. Verificar que el estudiante no haya registrado ya en esta sesión
+        // 2. Verificar que el estudiante no haya registrado ya en esta u otra sesión activa
         if (asistenciaRepository.existsBySesionClaseAndEstudiante(sesion, estudiante)) {
             throw new IllegalStateException(
                     "Ya registraste tu asistencia en esta sesión.");
+        }
+
+        List<Asistencia> asistenciasEstudiante = asistenciaRepository.findByEstudiante(estudiante);
+        boolean registradoEnOtraActiva = asistenciasEstudiante.stream()
+                .anyMatch(a -> a.getSesionClase().isActiva());
+        if (registradoEnOtraActiva) {
+            throw new IllegalStateException(
+                    "Ya has registrado tu asistencia en otra sesión de clase activa en este momento. Solo esa sesión es válida para ti.");
         }
 
         // 3. Buscar y vincular la PC física a la sala de la sesión
@@ -95,5 +103,13 @@ public class AsistenciaService {
     @Transactional(readOnly = true)
     public List<Inconveniente> obtenerTodosLosInconvenientes() {
         return inconvenienteRepository.findAll();
+    }
+
+    /**
+     * Obtiene todas las asistencias de un estudiante específico.
+     */
+    @Transactional(readOnly = true)
+    public List<Asistencia> obtenerAsistenciasPorEstudiante(Usuario estudiante) {
+        return asistenciaRepository.findByEstudiante(estudiante);
     }
 }

@@ -62,7 +62,7 @@ public class DatabaseInitializer implements CommandLineRunner {
             int actualizados = 0;
             for (Usuario usuario : usuarios) {
                 String pass = usuario.getContrasenia();
-                // BCrypt hashes start with $2a$, $2b$ or $2y$ and are 60 characters long
+                
                 boolean esBcrypt = pass != null && pass.length() == 60 &&
                         (pass.startsWith("$2a$") || pass.startsWith("$2b$") || pass.startsWith("$2y$"));
 

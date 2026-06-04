@@ -3,6 +3,7 @@ package com.arquitecturasoftware.labcheck.presentacion.controlador;
 import com.arquitecturasoftware.labcheck.aplicacion.dto.AsistenciaFormDto;
 import com.arquitecturasoftware.labcheck.aplicacion.servicio.AsistenciaService;
 import com.arquitecturasoftware.labcheck.aplicacion.servicio.SesionClaseService;
+import com.arquitecturasoftware.labcheck.dominio.modelo.Asistencia;
 import com.arquitecturasoftware.labcheck.dominio.modelo.SesionClase;
 import com.arquitecturasoftware.labcheck.dominio.modelo.Usuario;
 import com.arquitecturasoftware.labcheck.dominio.repositorio.UsuarioRepository;
@@ -30,9 +31,20 @@ public class EstudianteController {
 
 
     @GetMapping("/sesiones")
-    public String mostrarSesionesActivas(Model model) {
+    public String mostrarSesionesActivas(Authentication auth, Model model) {
+        Usuario estudiante = obtenerUsuarioAutenticado(auth);
         List<SesionClase> sesionesActivas = sesionClaseService.obtenerSesionesActivas();
+
+        // Buscar si el estudiante ya registró asistencia en alguna sesión activa
+        List<Asistencia> asistencias = asistenciaService.obtenerAsistenciasPorEstudiante(estudiante);
+        SesionClase sesionRegistrada = asistencias.stream()
+                .map(Asistencia::getSesionClase)
+                .filter(SesionClase::isActiva)
+                .findFirst()
+                .orElse(null);
+
         model.addAttribute("sesionesActivas", sesionesActivas);
+        model.addAttribute("sesionRegistrada", sesionRegistrada);
         model.addAttribute("asistenciaForm", new AsistenciaFormDto());
         return "estudiante/sesiones";
     }
