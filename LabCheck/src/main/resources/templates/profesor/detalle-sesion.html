@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LabCheck - Detalle de Sesión</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            min-height: 100vh;
+            color: #e0e0e0;
+        }
+        .container { max-width: 900px; margin: 40px auto; padding: 0 20px; }
+        .card {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 25px;
+        }
+        .card h3 { margin-bottom: 20px; color: #c4b5fd; }
+        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .info-item label { display: block; color: #9ca3af; font-size: 0.8rem; text-transform: uppercase; }
+        .info-item span { font-size: 1.1rem; color: #e5e7eb; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        th { color: #a78bfa; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; }
+        td { color: #d1d5db; font-size: 0.9rem; }
+        .btn-back {
+            display: inline-block;
+            padding: 10px 22px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 10px;
+            color: #c4b5fd;
+            text-decoration: none;
+            transition: background 0.3s;
+        }
+        .btn-back:hover { background: rgba(255,255,255,0.15); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a th:href="@{/profesor/panel}" class="btn-back">← Volver al Panel</a>
+
+        <div class="card" style="margin-top: 20px;">
+            <h3>📋 Detalle de Sesión</h3>
+            <div class="info-grid">
+                <div class="info-item">
+                    <label>Sala</label>
+                    <span th:text="${sesion.sala.nombreCodigo}"></span>
+                </div>
+                <div class="info-item">
+                    <label>Asignatura</label>
+                    <span th:text="${sesion.asignatura.nombre}"></span>
+                </div>
+                <div class="info-item">
+                    <label>Hora Inicio</label>
+                    <span th:text="${#temporals.format(sesion.horaInicio, 'dd/MM/yyyy HH:mm')}"></span>
+                </div>
+                <div class="info-item">
+                    <label>Hora Fin</label>
+                    <span th:text="${#temporals.format(sesion.horaFin, 'dd/MM/yyyy HH:mm')}"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>👥 Asistencias Registradas</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Estudiante</th>
+                        <th>Cédula</th>
+                        <th>PC Asignada</th>
+                        <th>Hora de Registro</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="asist, iterStat : ${asistencias}">
+                        <td th:text="${iterStat.count}"></td>
+                        <td th:text="${asist.estudiante.nombres + ' ' + asist.estudiante.apellidos}"></td>
+                        <td th:text="${asist.estudiante.cedula}"></td>
+                        <td th:text="${asist.computador.codigoUnico}"></td>
+                        <td th:text="${#temporals.format(asist.fechaRegistro, 'HH:mm:ss')}"></td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(asistencias)}">
+                        <td colspan="5" style="text-align:center; color:#6b7280;">No hay asistencias registradas.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

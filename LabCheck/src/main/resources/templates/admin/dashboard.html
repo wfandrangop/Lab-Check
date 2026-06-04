@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LabCheck - Dashboard Administrador</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            min-height: 100vh;
+            color: #e0e0e0;
+        }
+
+        .navbar {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .navbar h2 {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .btn-logout {
+            padding: 8px 20px;
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: #fca5a5;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 25px;
+            text-align: center;
+        }
+
+        .stat-card .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .stat-card .stat-label {
+            color: #9ca3af;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 25px;
+        }
+
+        .card h3 {
+            margin-bottom: 20px;
+            color: #c4b5fd;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        th {
+            color: #a78bfa;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            color: #d1d5db;
+            font-size: 0.9rem;
+        }
+
+        tr:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .badge-active {
+            background: rgba(34, 197, 94, 0.2);
+            color: #86efac;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .badge-inactive {
+            background: rgba(156, 163, 175, 0.2);
+            color: #9ca3af;
+            border: 1px solid rgba(156, 163, 175, 0.3);
+        }
+
+        .badge-warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fcd34d;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar">
+    <h2>LabCheck — Administrador</h2>
+    <form th:action="@{/logout}" method="post" style="display: inline;">
+        <button class="btn-logout">Cerrar Sesión</button>
+    </form>
+</nav>
+
+<div class="container">
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-number" th:text="${#lists.size(sesiones)}">0</div>
+            <div class="stat-label">Sesiones Totales</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" th:text="${#lists.size(asistencias)}">0</div>
+            <div class="stat-label">Asistencias Registradas</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" th:text="${#lists.size(inconvenientes)}">0</div>
+            <div class="stat-label">Inconvenientes Reportados</div>
+        </div>
+    </div>
+
+    <!-- Tabla de Sesiones -->
+    <div class="card">
+        <h3>Todas las Sesiones de Clase</h3>
+        <table>
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Sala</th>
+                <th>Profesor</th>
+                <th>Asignatura</th>
+                <th>Inicio</th>
+                <th>Fin</th>
+                <th>Estado</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="sesion : ${sesiones}">
+                <td th:text="${sesion.id}"></td>
+                <td th:text="${sesion.sala.nombreCodigo}"></td>
+                <td th:text="${sesion.profesor.nombres + ' ' + sesion.profesor.apellidos}"></td>
+                <td th:text="${sesion.asignatura.nombre}"></td>
+                <td th:text="${#temporals.format(sesion.horaInicio, 'dd/MM/yyyy HH:mm')}"></td>
+                <td th:text="${#temporals.format(sesion.horaFin, 'dd/MM/yyyy HH:mm')}"></td>
+                <td>
+                    <span th:if="${sesion.activa}" class="badge badge-active">Activa</span>
+                    <span th:unless="${sesion.activa}" class="badge badge-inactive">Cerrada</span>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Tabla de Asistencias -->
+    <div class="card">
+        <h3>Registro de Asistencias</h3>
+        <table>
+            <thead>
+            <tr>
+                <th>Estudiante</th>
+                <th>Cédula</th>
+                <th>Sesión / Asignatura</th>
+                <th>PC Usada</th>
+                <th>Fecha Registro</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="asist : ${asistencias}">
+                <td th:text="${asist.estudiante.nombres + ' ' + asist.estudiante.apellidos}"></td>
+                <td th:text="${asist.estudiante.cedula}"></td>
+                <td th:text="${asist.sesionClase.asignatura.nombre}"></td>
+                <td th:text="${asist.computador.codigoUnico}"></td>
+                <td th:text="${#temporals.format(asist.fechaRegistro, 'dd/MM/yyyy HH:mm')}"></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Tabla de Inconvenientes -->
+    <div class="card">
+        <h3> Inconvenientes Reportados</h3>
+        <table>
+            <thead>
+            <tr>
+                <th>PC</th>
+                <th>Reportado por</th>
+                <th>Descripción</th>
+                <th>Fecha</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="inc : ${inconvenientes}">
+                <td th:text="${inc.computador.codigoUnico}"></td>
+                <td th:text="${inc.estudiante.nombres + ' ' + inc.estudiante.apellidos}"></td>
+                <td th:text="${inc.descripcion}"></td>
+                <td th:text="${#temporals.format(inc.fechaReporte, 'dd/MM/yyyy')}"></td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(inconvenientes)}">
+                <td colspan="4" style="text-align:center; color:#6b7280;">No hay inconvenientes reportados.</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

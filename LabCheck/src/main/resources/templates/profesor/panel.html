@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LabCheck - Panel del Profesor</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            min-height: 100vh;
+            color: #e0e0e0;
+        }
+        .navbar {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(15px);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .navbar h2 {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .navbar .user-info { display: flex; align-items: center; gap: 15px; }
+        .btn-logout {
+            padding: 8px 20px;
+            background: rgba(239,68,68,0.2);
+            border: 1px solid rgba(239,68,68,0.4);
+            color: #fca5a5;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: background 0.3s;
+        }
+        .btn-logout:hover { background: rgba(239,68,68,0.35); }
+        .container { max-width: 1100px; margin: 30px auto; padding: 0 20px; }
+        .card {
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .card h3 {
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+            color: #c4b5fd;
+        }
+        .form-row { display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end; }
+        .form-group { flex: 1; min-width: 200px; }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #aaa;
+            font-size: 0.85rem;
+        }
+        select, input[type="text"] {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.07);
+            color: #fff;
+            font-size: 0.95rem;
+            outline: none;
+        }
+        select:focus, input[type="text"]:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.25);
+        }
+        select option { background: #1e1b4b; color: #fff; }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.3s;
+            font-size: 0.95rem;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102,126,234,0.4);
+        }
+        .btn-danger {
+            background: rgba(239,68,68,0.2);
+            border: 1px solid rgba(239,68,68,0.4);
+            color: #fca5a5;
+        }
+        .btn-danger:hover { background: rgba(239,68,68,0.35); }
+        .btn-sm { padding: 8px 16px; font-size: 0.85rem; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        th {
+            color: #a78bfa;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        td { color: #d1d5db; font-size: 0.9rem; }
+        tr:hover { background: rgba(255,255,255,0.03); }
+        .badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .badge-active {
+            background: rgba(34,197,94,0.2);
+            color: #86efac;
+            border: 1px solid rgba(34,197,94,0.3);
+        }
+        .badge-inactive {
+            background: rgba(156,163,175,0.2);
+            color: #9ca3af;
+            border: 1px solid rgba(156,163,175,0.3);
+        }
+        .alert {
+            padding: 12px 16px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+        }
+        .alert-success {
+            background: rgba(34,197,94,0.15);
+            border: 1px solid rgba(34,197,94,0.3);
+            color: #86efac;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h2>LabCheck — Profesor</h2>
+        <div class="user-info">
+            <span th:text="${profesor.nombres + ' ' + profesor.apellidos}">Nombre Profesor</span>
+            <form th:action="@{/logout}" method="post" style="display: inline;">
+                <button class="btn-logout">Cerrar Sesión</button>
+            </form>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div th:if="${mensaje}" class="alert alert-success">
+            <span th:text="${mensaje}"></span>
+        </div>
+
+        <!-- Formulario para activar sesión -->
+        <div class="card">
+            <h3>📋 Activar Sesión de Laboratorio</h3>
+            <form th:action="@{/profesor/activar-sesion}" method="post">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="salaId">Sala / Laboratorio</label>
+                        <select id="salaId" name="salaId" required>
+                            <option value="" disabled selected>Seleccione una sala</option>
+                            <option th:each="sala : ${salas}" th:value="${sala.id}"
+                                    th:text="${sala.nombreCodigo}"></option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="asignaturaId">Asignatura</label>
+                        <select id="asignaturaId" name="asignaturaId" required>
+                            <option value="" disabled selected>Seleccione una asignatura</option>
+                            <option th:each="asig : ${asignaturas}" th:value="${asig.id}"
+                                    th:text="${asig.nombre}"></option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 0;">
+                        <label>&nbsp;</label>
+                        <button type="submit" class="btn btn-primary">Activar Asistencia</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Tabla de sesiones -->
+        <div class="card">
+            <h3>📊 Mis Sesiones de Clase</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Sala</th>
+                        <th>Asignatura</th>
+                        <th>Inicio</th>
+                        <th>Fin</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="sesion : ${misSesiones}">
+                        <td th:text="${sesion.sala.nombreCodigo}"></td>
+                        <td th:text="${sesion.asignatura.nombre}"></td>
+                        <td th:text="${#temporals.format(sesion.horaInicio, 'dd/MM/yyyy HH:mm')}"></td>
+                        <td th:text="${#temporals.format(sesion.horaFin, 'dd/MM/yyyy HH:mm')}"></td>
+                        <td>
+                            <span th:if="${sesion.activa}" class="badge badge-active">Activa</span>
+                            <span th:unless="${sesion.activa}" class="badge badge-inactive">Cerrada</span>
+                        </td>
+                        <td>
+                            <form th:if="${sesion.activa}" th:action="@{/profesor/cerrar-sesion}" method="post" style="display:inline;">
+                                <input type="hidden" name="sesionId" th:value="${sesion.id}">
+                                <button type="submit" class="btn btn-danger btn-sm">Cerrar</button>
+                            </form>
+                            <a th:href="@{/profesor/detalle-sesion(sesionId=${sesion.id})}" class="btn btn-primary btn-sm" style="text-decoration:none;">Ver Detalle</a>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(misSesiones)}">
+                        <td colspan="6" style="text-align:center; color:#6b7280;">No hay sesiones registradas.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
