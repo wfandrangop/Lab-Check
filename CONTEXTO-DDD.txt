@@ -1,0 +1,633 @@
+1. Glosario del Lenguaje Ubicuo (Ubiquitous Language)
+A partir de tus respuestas, el modelo hablará estrictamente este idioma:
+
+PersonalLaboratorio: El actor administrativo (antiguo encargado/administrador) responsable de auditar los bloques y gestionar el ciclo de vida técnico de los computadores.
+
+BloqueHorario: La entidad que orquesta la apertura de un laboratorio por parte de un profesor para una asignatura específica, delimitando la ventana de tiempo (máximo 2 horas o lo que determine el profesor).
+
+Computador: El activo físico del laboratorio con un identificador de inventario único invariable.
+
+Asistencia: El registro que vincula a un estudiante con un BloqueHorario y un Computador específicos.
+
+ReporteNovedad: El registro de una incidencia técnica en un Computador. Su estado es persistente y es gestionado por el PersonalLaboratorio (PENDIENTE, EN_REPARACION, SOLUCIONADO).
+
+2. Mapa de Agregados y Límites Transaccionales (Bounded Context)
+En DDD, definir qué es un Agregado determina cómo se guardarán los datos y qué componentes garantizan las reglas de negocio de forma atómica. Tras tu análisis, el sistema se divide en 3 Agregados principales:
+
+Agregado 1: BloqueHorario (Raíz de Agregado)
+Entidades internas: Asistencia (vive y muere con el bloque, si se elimina el bloque, sus asistencias pierden sentido).
+
+Objetos de Valor: RangoTiempo (encapsula hora inicio/fin y valida que no supere las 2 horas), EstadoAsistencia (ACTIVA, CERRADA_MANUAL, EXPIRADA).
+
+Invariantes (Reglas de consistencia que este agregado protege):
+
+El Candado del Tiempo: No se puede registrar una Asistencia si la hora actual está fuera del RangoTiempo o si el estado del bloque es distinto de ACTIVA.
+
+Cierre Flexible: El profesor puede mutar el estado del bloque a CERRADA_MANUAL en cualquier momento (ej. a los 10 minutos), bloqueando inmediatamente futuros registros.
+
+Soporte de Compartición: Permite intencionalmente que múltiples Asistencia referencien al mismo identificador de Computador en la misma sesión (estudiantes trabajando juntos).
+
+Agregado 2: Sala (Raíz de Agregado)
+Entidades internas: Computador (tiene identidad propia por su código de inventario único y pertenece permanentemente a una Sala).
+
+Invariantes:
+
+Garantizar que un código de computador no se duplique dentro de la misma sala ni en el sistema global durante el inventario.
+
+Agregado 3: ReporteNovedad (Raíz de Agregado Independiente)
+Por qué es independiente: Porque tu regla de negocio dicta que el reporte sobrevivirá al terminar el BloqueHorario. Afecta a los siguientes bloques, por lo que su ciclo de vida lo maneja el PersonalLaboratorio.
+
+Objetos de Valor: EstadoNovedad (PENDIENTE, EN_REPARACION, SOLUCIONADO).
+
+3. Objetos de Valor (Value Objects) Autónomos
+Para evitar el "Primitivism Obsession" (usar Strings para todo), el dominio contará con:
+
+CorreoInstitucional: Valida sintaxis y la terminación obligatoria en @uce.edu.ec.
+
+Cedula: Valida el algoritmo de 10 dígitos ecuatoriano de forma aislada.
+
+Para implementar **Domain-Driven Design (DDD)** con éxito en Java 17, la regla de oro es la **pureza del dominio**. Todo el código que verás a continuación es Java puro (POJOs y Records); no encontrarás ninguna anotación de Spring (`@Service`, `@Autowired`) ni de JPA (`@Entity`, `@Table`). La infraestructura se adaptará al dominio después, nunca al revés.
+
+Para mantener los límites transaccionales limpios y evitar un acoplamiento severo en memoria, aplicaremos una regla táctica esencial de DDD: **los agregados se comunican entre sí haciendo referencia únicamente a sus IDs**, no embebiendo objetos completos.
+
+---
+
+## 1. Objetos de Valor (Value Objects)
+
+Aprovechando **Java 17**, utilizaremos `record` para modelar los Objetos de Valor. Son inmutables por definición, no tienen identidad propia y validan sus propias invariantes en el constructor compacto.
+
+```java
+package com.uce.sgalab.domain.model.vo;
+
+import java.time.LocalDateTime;
+
+// 1. Correo Institucional: Se auto-valida al crearse
+public record CorreoInstitucional(String value) {
+    public CorreoInstitucional {
+        if (value == null || !value.endsWith("@uce.edu.ec")) {
+            throw new IllegalArgumentException("El correo debe ser un correo institucional válido de la UCE.");
+        }
+    }
+}
+
+// 2. Cédula de Identidad Ecuatoriana
+public record Cedula(String value) {
+    public Cedula {
+        if (value == null || value.length() != 10 || !value.matches("\\d+")) {
+            throw new IllegalArgumentException("La cédula debe contener exactamente 10 dígitos numéricos.");
+        }
+        // Aquí se podría añadir el algoritmo del dígito verificador (módulo 10)
+    }
+}
+
+// 3. Rango de Tiempo del Bloque (Máximo 2 horas e inyectable en las ventanas operativas)
+public record RangoTiempo(LocalDateTime horaInicio, LocalDateTime horaFin) {
+    public RangoTiempo {
+        if (horaInicio == null || horaFin == null) {
+            throw new IllegalArgumentException("Las fechas de inicio y fin no pueden ser nulas.");
+        }
+        if (horaInicio.isAfter(horaFin)) {
+            throw new IllegalArgumentException("La hora de inicio no puede ser posterior a la hora de fin.");
+        }
+        if (horaInicio.plusHours(2).isBefore(horaFin)) {
+            throw new IllegalArgumentException("Un bloque horario no puede exceder las 2 horas de duración.");
+        }
+    }
+    
+    public boolean incluye(LocalDateTime momento) {
+        return !momento.isBefore(horaInicio) && !momento.isAfter(horaFin);
+    }
+}
+
+// Enums del Dominio
+public enum EstadoBloque { ACTIVO, CERRADO_MANUAL, EXPIRADO }
+public enum EstadoNovedad { PENDIENTE, EN_REPARACION, SOLUCIONADO }
+public enum Rol { ESTUDIANTE, PROFESOR, PERSONAL_LABORATORIO }
+
+```
+
+---
+
+## 2. Entidades y Raíces de Agregados (Aggregate Roots)
+
+Las raíces de agregados gestionan sus entidades internas asegurando que ninguna regla de negocio sea vulnerada. Tienen identidad única (`Id`) invariable.
+
+### Agregado Sala (Inventario Físico)
+
+La `Sala` es la raíz. El `Computador` es una entidad interna que posee identidad de inventario única (`codigoUnico`), pero no puede ser manipulado fuera del contexto de su sala.
+
+```java
+package com.uce.sgalab.domain.model.sala;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+public class Computador {
+    private final String codigoUnico; [cite_start]// Identificador de inventario único [cite: 17]
+
+    public Computador(String codigoUnico) {
+        if (codigoUnico == null || codigoUnico.isBlank()) {
+            throw new IllegalArgumentException("El código de inventario de la PC no puede estar vacío.");
+        }
+        this.codigoUnico = codigoUnico;
+    }
+
+    public String getCodigoUnico() { return codigoUnico; }
+}
+
+// Raíz de Agregado
+public class Sala {
+    private final Long id;
+    private final String nombreCodigo; [cite_start]// Ej: "LAB-01" [cite: 15]
+    private final List<Computador> computadores;
+
+    public Sala(Long id, String nombreCodigo) {
+        this.id = id;
+        this.nombreCodigo = nombreCodigo;
+        this.computadores = new ArrayList<>();
+    }
+
+    // Invariante: No se pueden duplicar códigos de PC en la misma sala
+    public void registrarComputador(String codigoUnico) {
+        boolean existe = computadores.stream()
+            .anyMatch(c -> c.getCodigoUnico().equalsIgnoreCase(codigoUnico));
+        if (existe) {
+            throw new IllegalStateException("El computador con código " + codigoUnico + " ya está registrado en esta sala.");
+        }
+        this.computadores.add(new Computador(codigoUnico));
+    }
+
+    public Long getId() { return id; }
+    public String getNombreCodigo() { return nombreCodigo; }
+    public List<Computador> getComputadores() { return Collections.unmodifiableList(computadores); }
+}
+
+```
+
+---
+
+### Agregado BloqueHorario (Control de Asistencias)
+
+`BloqueHorario` es la raíz. La entidad `Asistencia` es interna. El agregado asume la responsabilidad total de evaluar el tiempo y autorizar la compartición de equipos.
+
+```java
+package com.uce.sgalab.domain.model.bloque;
+
+import com.uce.sgalab.domain.model.vo.*;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+public class Asistencia {
+    private final Long id;
+    private final Long estudianteId;  // Referencia por ID al agregado Usuario
+    private final String pcCodigo;    // Identificador de auditoría de la PC
+    private final LocalDateTime fechaRegistro;
+
+    public Asistencia(Long id, Long estudianteId, String pcCodigo, LocalDateTime fechaRegistro) {
+        this.id = id;
+        this.estudianteId = estudianteId;
+        this.pcCodigo = pcCodigo;
+        this.fechaRegistro = fechaRegistro;
+    }
+
+    public Long getEstudianteId() { return estudianteId; }
+    public String getPcCodigo() { return pcCodigo; }
+    public LocalDateTime getFechaRegistro() { return fechaRegistro; }
+}
+
+// Raíz de Agregado
+public class BloqueHorario {
+    private final Long id;
+    private final Long salaId;      // Referencia por ID a Sala
+    private final Long profesorId;  // Referencia por ID a Usuario (Profesor)
+    [cite_start]private final Long asignaturaId;// Referencia por ID a Asignatura [cite: 22]
+    
+    private RangoTiempo rangoTiempo;
+    private EstadoBloque estado;
+    private final List<Asistencia> asistencias;
+
+    public BloqueHorario(Long id, Long salaId, Long profesorId, Long asignaturaId, RangoTiempo rangoTiempo) {
+        this.id = id;
+        this.salaId = salaId;
+        this.profesorId = profesorId;
+        this.asignaturaId = asignaturaId;
+        this.rangoTiempo = rangoTiempo;
+        this.estado = EstadoBloque.ACTIVO; // Inicia habilitado por el profesor
+        this.asistencias = new ArrayList<>();
+    }
+
+    // INVARIANTE: Candado de Validación de Asistencia
+    public void registrarAsistencia(Long asistenciaId, Long estudianteId, String pcCodigo, LocalDateTime momentoRegistro) {
+        // 1. Validar el estado del candado operativo
+        if (this.estado == EstadoBloque.CERRADO_MANUAL) {
+            throw new IllegalStateException("El profesor ha cerrado manualmente el registro para este bloque.");
+        }
+        
+        // 2. Validar expiración automática por tiempo
+        if (!this.rangoTiempo.incluye(momentoRegistro)) {
+            this.estado = EstadoBloque.EXPIRADO;
+            throw new IllegalStateException("El tiempo establecido para este bloque horario ha expirado.");
+        }
+
+        // Regla de Negocio: Está permitido compartir PCs (asistencias con mismo pcCodigo son válidas)
+        Asistencia nuevaAsistencia = new Asistencia(asistenciaId, estudianteId, pcCodigo, momentoRegistro);
+        this.asistencias.add(nuevaAsistencia);
+    }
+
+    // Acción del Profesor: Cierre metodológico anticipado
+    public void cerrarManualmente() {
+        this.estado = EstadoBloque.CERRADO_MANUAL;
+    }
+
+    public Long getId() { return id; }
+    public Long getSalaId() { return salaId; }
+    public EstadoBloque getEstado() { return estado; }
+    public List<Asistencia> getAsistencias() { return Collections.unmodifiableList(asistencias); }
+}
+
+```
+
+---
+
+### Agregado ReporteNovedad (Gestión Física de Infraestructura)
+
+Tiene un ciclo de vida independiente de las clases porque una PC dañada trasciende las 2 horas del bloque. Su estado es alterado únicamente por el `PersonalLaboratorio`.
+
+```java
+package com.uce.sgalab.domain.model.novedad;
+
+import com.uce.sgalab.domain.model.vo.EstadoNovedad;
+import java.time.LocalDate;
+
+// Raíz de Agregado
+public class ReporteNovedad {
+    private final Long id;
+    private final String pcCodigo;     // A qué PC afecta
+    private final Long estudianteId;   [cite_start]// Quién lo reportó [cite: 29]
+    private final String descripcion;  [cite_start]// Detalle de la falla [cite: 30]
+    private final LocalDate fechaReporte;
+    private EstadoNovedad estado;      // PENDIENTE, EN_REPARACION, SOLUCIONADO
+
+    public ReporteNovedad(Long id, String pcCodigo, Long estudianteId, String descripcion) {
+        if (descripcion == null || descripcion.isBlank()) {
+            throw new IllegalArgumentException("La descripción del inconveniente técnico no puede estar vacía.");
+        }
+        this.id = id;
+        this.pcCodigo = pcCodigo;
+        this.estudianteId = estudianteId;
+        this.descripcion = descripcion;
+        this.fechaReporte = LocalDate.now();
+        this.estado = EstadoNovedad.PENDIENTE; // Estado inicial nativo
+    }
+
+    // Lógica exclusiva del PersonalLaboratorio
+    public void actualizarEstado(EstadoNovedad nuevoEstado) {
+        if (this.estado == EstadoNovedad.SOLUCIONADO && nuevoEstado == EstadoNovedad.EN_REPARACION) {
+            throw new IllegalStateException("No se puede reparar un equipo que ya ha sido marcado como SOLUCIONADO.");
+        }
+        this.estado = nuevoEstado;
+    }
+
+    public Long getId() { return id; }
+    public String getPcCodigo() { return pcCodigo; }
+    public EstadoNovedad getEstado() { return estado; }
+}
+
+```
+
+---
+
+## 3. Interfaces de Repositorios de Dominio (Contratos)
+
+En DDD, las interfaces de los repositorios pertenecen a la capa de dominio. Definen las operaciones que el negocio necesita, abstrayéndose por completo de SQL o bases de datos.
+
+```java
+package com.uce.sgalab.domain.repository;
+
+import com.uce.sgalab.domain.model.bloque.BloqueHorario;
+import com.uce.sgalab.domain.model.sala.Sala;
+import com.uce.sgalab.domain.model.novedad.ReporteNovedad;
+import java.util.Optional;
+import java.util.List;
+
+public interface BloqueHorarioRepository {
+    BloqueHorario save(BloqueHorario bloqueHorario);
+    Optional<BloqueHorario> findById(Long id);
+    List<BloqueHorario> findAll();
+}
+
+public interface SalaRepository {
+    Optional<Sala> findById(Long id);
+    Optional<Sala> findByNombreCodigo(String nombreCodigo);
+}
+
+public interface ReporteNovedadRepository {
+    ReporteNovedad save(ReporteNovedad reporte);
+    List<ReporteNovedad> findAll();
+}
+
+```
+
+---
+
+## 4. Servicio de Dominio (Domain Service)
+
+¿Qué pasa si una regla de negocio requiere interactuar con dos agregados distintos que no pueden contenerse el uno al otro? Usamos un **Domain Service**.
+
+*Regla:* El estudiante no puede registrar asistencia en un `BloqueHorario` indicando una PC que no existe físicamente en la `Sala` asociada a ese bloque.
+
+```java
+package com.uce.sgalab.domain.service;
+
+import com.uce.sgalab.domain.model.bloque.BloqueHorario;
+import com.uce.sgalab.domain.model.sala.Sala;
+import com.uce.sgalab.domain.repository.SalaRepository;
+import java.time.LocalDateTime;
+
+public class VerificacionAsistenciaDomainService {
+    private final SalaRepository salaRepository;
+
+    public VerificacionAsistenciaDomainService(SalaRepository salaRepository) {
+        this.salaRepository = salaRepository;
+    }
+
+    public void verificarYRegistrar(BloqueHorario bloque, Long asistenciaId, Long estudianteId, String pcCodigo) {
+        // 1. Cruzar datos con el Agregado Sala para validar la infraestructura física
+        Sala sala = salaRepository.findById(bloque.getSalaId())
+            .orElseThrow(() -> new IllegalArgumentException("La sala asociada al bloque no existe."));
+            
+        boolean pcExisteEnSala = sala.getComputadores().stream()
+            .anyMatch(pc -> pc.getCodigoUnico().equalsIgnoreCase(pcCodigo));
+            
+        if (!pcExisteEnSala) {
+            throw new IllegalArgumentException("Operación Inválida: La computadora " + pcCodigo + " no pertenece físicamente a la sala " + sala.getNombreCodigo());
+        }
+
+        // 2. Si la infraestructura es correcta, delegar al Agregado correspondiente la ejecución de sus propias invariantes
+        bloque.registrarAsistencia(asistenciaId, estudianteId, pcCodigo, LocalDateTime.now());
+    }
+}
+
+```
+
+---
+
+El diseño táctico estructural del dominio está completo y blindado. El núcleo del software de laboratorios de la UCE es seguro y testeable de forma aislada.
+
+1. La Base de los Eventos (Interface y Records)
+Creamos la interfaz marcadora y los 3 eventos clave que ocurren en tu sistema de laboratorios. Todo entra en un par de líneas de código.
+
+Java
+package com.uce.sgalab.domain.model.event;
+
+import java.time.LocalDateTime;
+
+// Interfaz base minimalista
+public interface EventoDominio {
+    LocalDateTime ocurridoEn();
+}
+
+// Evento 1: El profesor abrió el laboratorio
+public record BloqueHorarioActivado(Long bloqueId, Long salaId, LocalDateTime ocurridoEn) implements EventoDominio {}
+
+// Evento 2: Un estudiante se registró con éxito
+public record AsistenciaRegistrada(Long bloqueId, Long estudianteId, String pcCodigo, LocalDateTime ocurridoEn) implements EventoDominio {}
+
+// Evento 3: El bloque se cerró (por tiempo o por el profesor)
+public record BloqueHorarioCerrado(Long bloqueId, String motivo, LocalDateTime ocurridoEn) implements EventoDominio {}
+2. ¿Cómo los genera el Agregado? (Modificación en BloqueHorario)
+Para que el diseño sea DDD puro, la Raíz de Agregado debe generar el evento en su memoria interna cuando se ejecuta una acción de negocio. Solo tienes que agregar una lista y mutarla en los métodos que ya creamos:
+
+Java
+package com.uce.sgalab.domain.model.bloque;
+
+import com.uce.sgalab.domain.model.event.*;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+public class BloqueHorario {
+    private final Long id;
+    private final Long salaId;
+    private EstadoBloque estado;
+    private final List<Asistencia> asistencias = new ArrayList<>();
+    
+    // El secreto de DDD: El agregado acumula sus eventos de forma local
+    private final List<EventoDominio> eventosRegistrados = new ArrayList<>();
+
+    public BloqueHorario(Long id, Long salaId, Long profesorId, Long asignaturaId, RangoTiempo rangoTiempo) {
+        this.id = id;
+        this.salaId = salaId;
+        this.estado = EstadoBloque.ACTIVO;
+        
+        // Se dispara el evento de apertura
+        this.eventosRegistrados.add(new BloqueHorarioActivado(id, salaId, LocalDateTime.now()));
+    }
+
+    public void registrarAsistencia(Long asistenciaId, Long estudianteId, String pcCodigo, LocalDateTime momento) {
+        if (this.estado != EstadoBloque.ACTIVO) {
+            throw new IllegalStateException("Bloque no activo.");
+        }
+        
+        this.asistencias.add(new Asistencia(asistenciaId, estudianteId, pcCodigo, momento));
+        
+        // Se dispara el evento de asistencia
+        this.eventosRegistrados.add(new AsistenciaRegistrada(this.id, estudianteId, pcCodigo, momento));
+    }
+
+    public void cerrarManualmente() {
+        this.estado = EstadoBloque.CERRADO_MANUAL;
+        
+        // Se dispara el evento de cierre
+        this.eventosRegistrados.add(new BloqueHorarioCerrado(this.id, "Cierre manual por el Profesor", LocalDateTime.now()));
+    }
+
+    // El servicio de aplicación usará este método para leer los eventos y limpiarlos
+    public List<EventoDominio> extraerEventos() {
+        List<EventoDominio> copia = new ArrayList<>(this.eventosRegistrados);
+        this.eventosRegistrados.clear();
+        return copia;
+    }
+}
+3. El Publicador de Eventos (La Infraestructura Express)
+Para cumplir con el examen sin complicarte la vida, implementa un publicador estático súper simple que use programación reactiva funcional nativa de Java (Consumer).
+
+Java
+package com.uce.sgalab.infrastructure.event;
+
+import com.uce.sgalab.domain.model.event.EventoDominio;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
+
+public class PublicadorEventosExpress {
+    private static final List<Consumer<EventoDominio>> suscriptores = new ArrayList<>();
+
+    // Permite suscribir "escuchadores" (Ej: enviar correos, auditoría, logs)
+    public static void suscribir(Consumer<EventoDominio> suscriptor) {
+        suscriptores.add(suscriptor);
+    }
+
+    // Publica los eventos acumulados
+    public static void publicar(List<EventoDominio> eventos) {
+        eventos.forEach(evento -> suscriptores.forEach(s -> s.accept(evento)));
+    }
+}
+4. ¿Cómo se ve todo junto en la Capa de Aplicación?
+Cuando el controlador llame al servicio de aplicación, este guardará los cambios en el repositorio y despachará los eventos acumulados inmediatamente en una sola línea:
+
+Java
+@Transactional
+public void ejecutarRegistroAsistencia(Long bloqueId, Long estudianteId, String pc) {
+    BloqueHorario bloque = repository.findById(bloqueId).orElseThrow();
+    
+    // 1. Ejecuta lógica e internamente genera el evento 'AsistenciaRegistrada'
+    bloque.registrarAsistencia(new Id(), estudianteId, pc, LocalDateTime.now());
+    
+    // 2. Guarda el estado en la base de datos
+    repository.save(bloque);
+    
+    // 3. Extrae y publica los eventos para que otros componentes reaccionen
+    PublicadorEventosExpress.publicar(bloque.extraerEventos());
+}
+
+
+Estructura ideal de las carpetas: 
+com.uce.sgalab
+│
+├── domain                      <-- CAPA DE DOMINIO (100% código puro Java)
+│   ├── model
+│   │   ├── bloque              # Agregado BloqueHorario, Asistencia, EstadoBloque
+│   │   ├── sala                # Agregado Sala, Computador
+│   │   ├── novedad             # Agregado ReporteNovedad, EstadoNovedad
+│   │   └── vo                  # Records: Cedula, CorreoInstitucional, RangoTiempo
+│   ├── repository              # INTERFACES de repositorios (Contratos puros)
+│   │   ├── BloqueHorarioRepository.java
+│   │   └── SalaRepository.java
+│   ├── service                 # Servicios de Dominio (Lógica cruzada de agregados)
+│   │   └── VerificacionAsistenciaDomainService.java
+│   └── event                   # Clases/Records de Eventos de Dominio
+│       └── EventoDominio.java
+│
+├── application                 <-- CAPA DE APLICACIÓN (Casos de uso / Orquestación)
+│   ├── service                 # Servicios de Aplicación (Llaman al dominio y salvan en BD)
+│   │   ├── AsistenciaAppService.java
+│   │   └── BloqueHorarioAppService.java
+│   └── dto                     # Objetos que viajan hacia la vista (Thymeleaf)
+│       └── AsistenciaFormDto.java
+│
+├── infrastructure              <-- CAPA DE INFRAESTRUCTURA (Herramientas y Base de Datos)
+│   ├── persistence             # Implementación física de la BD
+│   │   ├── entity              # @Entity de JPA (Aquí sí van las anotaciones de PostgreSQL)
+│   │   │   ├── BloqueJpaEntity.java
+│   │   │   └── SalaJpaEntity.java
+│   │   ├── repository          # Interfaces de Spring Data (extends JpaRepository)
+│   │   │   └── SpringDataBloqueRepository.java
+│   │   └── adapter             # Implementa el repositorio de dominio usando el de Spring Data
+│   │       └── BloqueHorarioRepositoryImpl.java
+│   ├── config                  # Configuración de beans y Spring Security
+│   │   └── SecurityConfig.java
+│   └── event                   # Implementación del envío de eventos
+│       └── PublicadorEventosExpress.java
+│
+└── presentation                <-- CAPA DE PRESENTACIÓN (Controladores Web)
+    └── controller              # Controladores @Controller de Spring MVC
+        ├── LoginController.java
+        ├── ProfesorController.java
+        ├── EstudianteController.java
+        └── AdminController.java
+
+¿Dónde van los archivos HTML de Thymeleaf?
+Al usar Spring Boot, la parte visual no va en las carpetas de Java, sino en la carpeta de recursos del proyecto:
+
+src/main/resources
+├── templates/                  # Vistas HTML de Thymeleaf
+│   ├── login.html
+│   ├── profesor.html
+│   ├── estudiante.html
+│   └── administrador.html
+└── application.properties      # Conexión a PostgreSQL
+
+
+La estructura final deseada es: 
+C:.
+│   LabCheckApplication.java
+│
+├───aplicacion
+│   ├───dto
+│   │       AsistenciaFormDto.java
+│   │
+│   └───servicio
+│           AsistenciaAppService.java
+│           BloqueHorarioAppService.java
+│
+├───dominio
+│   ├───modelo
+│   │   ├───agregado
+│   │   │   ├───bloque
+│   │   │   │       Asistencia.java
+│   │   │   │       BloqueHorario.java
+│   │   │   │
+│   │   │   ├───novedad
+│   │   │   │       ReporteNovedad.java
+│   │   │   │
+│   │   │   ├───sala
+│   │   │   │       Computador.java
+│   │   │   │       Sala.java
+│   │   │   │
+│   │   │   └───usuario
+│   │   │           Usuario.java
+│   │   │
+│   │   ├───evento
+│   │   │       AsistenciaRegistrada.java
+│   │   │       BloqueHorarioActivado.java
+│   │   │       BloqueHorarioCerrado.java
+│   │   │       EventoDominio.java
+│   │   │
+│   │   └───objetoValor
+│   │           Cedula.java
+│   │           CorreoInstitucional.java
+│   │           EstadoBloque.java
+│   │           EstadoNovedad.java
+│   │           RangoTiempo.java
+│   │           Rol.java
+│   │
+│   ├───repositorio
+│   │       BloqueHorarioRepository.java
+│   │       ReporteNovedadRepository.java
+│   │       SalaRepository.java
+│   │       UsuarioRepository.java
+│   │
+│   └───servicio
+│           VerificacionAsistenciaDomainService.java
+│
+├───infraestructura
+│   └───persistencia
+│       ├───adaptador
+│       │       BloqueHorarioRepositoryImpl.java
+│       │       ReporteNovedadRepositoryImpl.java
+│       │       SalaRepositoryImpl.java
+│       │       UsuarioRepositoryImpl.java
+│       │
+│       ├───entidad
+│       │       AsistenciaJpaEntity.java
+│       │       BloqueHorarioJpaEntity.java
+│       │       ComputadorJpaEntity.java
+│       │       ReporteNovedadJpaEntity.java
+│       │       SalaJpaEntity.java
+│       │       UsuarioJpaEntity.java
+│       │
+│       └───repositorio
+│               SpringDataBloqueRepositorio.java
+│               SpringDataReporteNovedadRepositorio.java
+│               SpringDataSalaRepositorio.java
+│               SpringDataUsuarioRepositorio.java
+│
+└───presentacion
+        AdminControlador.java
+        EstudianteControlador.java
+        LoginControlador.java
+        ProfesorControlador.java

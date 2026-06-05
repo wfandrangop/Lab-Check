@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LabCheck - Dashboard Estudiante</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar h1 {
+            font-size: 24px;
+        }
+
+        .navbar-links {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .navbar-links a {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            transition: opacity 0.3s;
+        }
+
+        .navbar-links a:hover {
+            opacity: 0.8;
+        }
+
+        .btn-logout {
+            background-color: #ff6b6b;
+            padding: 8px 15px;
+            border-radius: 5px;
+            text-decoration: none;
+            color: white;
+            font-size: 13px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .header-section {
+            margin-bottom: 30px;
+        }
+
+        .header-section h2 {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .alert-error {
+            background-color: #fee;
+            color: #c33;
+            border: 1px solid #fcc;
+        }
+
+        .alert-success {
+            background-color: #efe;
+            color: #3c3;
+            border: 1px solid #cfc;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: transform 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-primary {
+            background-color: #667eea;
+            color: white;
+        }
+
+        .btn-secondary {
+            background-color: #f0f0f0;
+            color: #333;
+            border: 1px solid #ddd;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #ddd;
+        }
+
+        .tab {
+            padding: 12px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: #999;
+            border-bottom: 3px solid transparent;
+            transition: color 0.3s;
+        }
+
+        .tab:hover {
+            color: #667eea;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-section {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .form-section h3 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #333;
+            font-size: 14px;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 5px rgba(102, 126, 234, 0.1);
+        }
+
+        .table-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        table th {
+            background-color: #f5f5f5;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #ddd;
+        }
+
+        table td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        table tr:hover {
+            background-color: #fafafa;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-activo {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .badge-pendiente {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .badge-reparacion {
+            background-color: #cfe2ff;
+            color: #084298;
+        }
+
+        .badge-solucionado {
+            background-color: #d1e7dd;
+            color: #0f5132;
+        }
+
+        .grid-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .card-info {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-info h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .card-info p {
+            color: #666;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar">
+    <h1>🏫 LabCheck</h1>
+    <div class="navbar-links">
+        <a href="/estudiante">Dashboard</a>
+        <a href="/estudiante/mis-asistencias">Mis Asistencias</a>
+        <a href="/estudiante/novedades">Reportes</a>
+        <span th:if="${session.currentUserNombre != null}" style="margin-left: 12px; font-weight:600;">Bienvenido, <span th:text="${session.currentUserNombre}"></span></span>
+        <a href="/logout" class="btn-logout">Cerrar Sesión</a>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="header-section">
+        <h2 th:text="${titulo} ?: 'Dashboard del Estudiante'"></h2>
+    </div>
+
+    <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+    <div th:if="${exito}" class="alert alert-success" th:text="${exito}"></div>
+
+    <div class="tabs">
+        <button class="tab active" onclick="abrirTab(event, 'bloques')">📅 Bloques Disponibles</button>
+        <button class="tab" onclick="abrirTab(event, 'registrar')">✍️ Registrar Asistencia</button>
+        <button class="tab" onclick="abrirTab(event, 'novedades')">🔧 Reportar Novedad</button>
+    </div>
+
+    <div id="bloques" class="tab-content active">
+        <div th:if="${bloquesActivos != null}" class="table-container">
+            <h3>Bloques Horarios Disponibles</h3>
+            <table>
+                <thead>
+                <tr>
+                    <th>ID Bloque</th>
+                    <th>Sala</th>
+                    <th>Estado</th>
+                    <th>Asistencias</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="bloque : ${bloquesActivos}">
+                    <td th:text="${bloque.id}"></td>
+                    <td th:text="'LAB-' + ${bloque.salaId}"></td>
+                    <td>
+                        <span th:if="${bloque.estado.toString() == 'ACTIVO'}" class="badge badge-activo">ACTIVO</span>
+                        <span th:if="${bloque.estado.toString() == 'CERRADO_MANUAL'}" class="badge badge-pendiente">CERRADO</span>
+                        <span th:if="${bloque.estado.toString() == 'EXPIRADO'}"
+                              class="badge badge-pendiente">EXPIRADO</span>
+                    </td>
+                    <td th:text="${bloque.asistencias.size()}"></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div th:if="${bloquesActivos == null or bloquesActivos.isEmpty()}" class="table-container">
+            <p>No hay bloques horarios disponibles en este momento.</p>
+        </div>
+    </div>
+
+    <div id="registrar" class="tab-content">
+        <div class="form-section">
+            <h3>Registrar Mi Asistencia</h3>
+            <form th:action="@{/estudiante/registrar-asistencia}" th:object="${asistenciaFormDto}" method="post">
+
+                <div class="form-group">
+                    <label for="bloqueId">Bloque Horario Disponible</label>
+                    <select id="bloqueId" th:field="*{bloqueId}" class="form-control" required>
+                        <option value="">-- Seleccione un bloque de clase --</option>
+                        <option th:each="bloque : ${bloquesDisponibles}"
+                                th:value="${bloque.id}"
+                                th:text="${'Sala: ' + bloque.salaId + ' - Asignatura ID: ' + bloque.asignaturaId}">
+                        </option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="estudianteId">Tu ID de Estudiante</label>
+                    <input type="number" id="estudianteId" th:field="*{estudianteId}" class="form-control"
+                           placeholder="Ej. 1723456789" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="pcCodigo">Código del Computador (Etiqueta física)</label>
+                    <input type="text" id="pcCodigo" th:field="*{pcCodigo}" class="form-control"
+                           placeholder="Ej. COMP-LAB1-05" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="observaciones">Observaciones / Estado inicial del equipo (Opcional)</label>
+                    <textarea id="observaciones" th:field="*{observaciones}" class="form-control" rows="3"
+                              placeholder="Ej. El mouse no funciona bien, pantalla limpia..."></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Firmar Asistencia</button>
+            </form>
+
+        </div>
+    </div>
+
+    <div id="novedades" class="tab-content">
+        <div class="form-section">
+            <h3>Reportar Novedad Técnica</h3>
+            <p style="color: #666; margin-bottom: 20px;">Reporta cualquier problema técnico que identifiques en los
+                computadores del laboratorio.</p>
+            <form th:action="@{/estudiante/reportar-novedad}" method="post">
+                <div class="form-group">
+                    <label for="pcCodigo2">Código del Computador Dañado</label>
+                    <input type="text" id="pcCodigo2" name="pcCodigo" placeholder="Ej: PC-001, PC-LAB-001" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="descripcion">Descripción del Problema</label>
+                    <textarea id="descripcion" name="descripcion" placeholder="Describe el problema técnico..." rows="5"
+                              required></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Enviar Reporte</button>
+            </form>
+        </div>
+
+        <div th:if="${novedades != null}" class="table-container" style="margin-top: 30px;">
+            <h3>Mis Reportes de Novedades</h3>
+            <table>
+                <thead>
+                <tr>
+                    <th>Computador</th>
+                    <th>Descripción</th>
+                    <th>Estado</th>
+                    <th>Fecha Reporte</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="novedad : ${novedades}">
+                    <td th:text="${novedad.pcCodigo}"></td>
+                    <td th:text="${novedad.descripcion}"></td>
+                    <td>
+                        <span th:if="${novedad.estado.toString() == 'PENDIENTE'}" class="badge badge-pendiente">PENDIENTE</span>
+                        <span th:if="${novedad.estado.toString() == 'EN_REPARACION'}" class="badge badge-reparacion">EN REPARACIÓN</span>
+                        <span th:if="${novedad.estado.toString() == 'SOLUCIONADO'}" class="badge badge-solucionado">SOLUCIONADO</span>
+                    </td>
+                    <td th:text="${#temporals.format(novedad.fechaReporte, 'dd/MM/yyyy')}"></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    function abrirTab(evt, tabName) {
+        var i, tabcontent, tablinks;
+
+        tabcontent = document.getElementsByClassName("tab-content");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].classList.remove("active");
+        }
+
+        tablinks = document.getElementsByClassName("tab");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].classList.remove("active");
+        }
+
+        document.getElementById(tabName).classList.add("active");
+        evt.currentTarget.classList.add("active");
+    }
+</script>
+</body>
+</html>

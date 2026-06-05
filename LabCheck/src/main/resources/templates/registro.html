@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LabCheck - Registro de Usuario</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container-registro {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 500px;
+            padding: 40px;
+        }
+        .header-registro {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header-registro h1 {
+            color: #667eea;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .header-registro p {
+            color: #666;
+            font-size: 14px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        input[type="text"]:focus,
+        input[type="email"]:focus,
+        input[type="password"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 5px rgba(102, 126, 234, 0.1);
+        }
+        .btn-registro {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .btn-registro:hover {
+            transform: translateY(-2px);
+        }
+        .btn-volver {
+            width: 100%;
+            padding: 10px;
+            background: #f0f0f0;
+            color: #333;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+        .btn-volver:hover {
+            background: #e0e0e0;
+        }
+        .alert {
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        .alert-error {
+            background-color: #fee;
+            color: #c33;
+            border: 1px solid #fcc;
+        }
+        .alert-success {
+            background-color: #efe;
+            color: #3c3;
+            border: 1px solid #cfc;
+        }
+        .roles-description {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #666;
+            border-left: 4px solid #667eea;
+        }
+        .roles-description strong {
+            display: block;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .role-item {
+            margin: 8px 0;
+            padding-left: 20px;
+        }
+        .footer-registro {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-registro">
+        <div class="header-registro">
+            <h1>LabCheck</h1>
+            <p>Crear Nueva Cuenta</p>
+        </div>
+
+        <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+
+        <form th:action="@{/procesarRegistro}" method="post" th:object="${registroUsuarioFormDto}">
+            <div class="form-group">
+                <label for="nombre">Nombre Completo <span style="color: #c33;">*</span></label>
+                <input type="text" id="nombre" name="nombre" th:field="*{nombre}" 
+                       placeholder="Juan Pérez García" required>
+            </div>
+
+            <div class="form-group">
+                <label for="cedula">Cédula <span style="color: #c33;">*</span></label>
+                <input type="text" id="cedula" name="cedula" th:field="*{cedula}"
+                       placeholder="1234567890" maxlength="10" pattern="\d{10}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="correoInstitucional">Correo Institucional <span style="color: #c33;">*</span></label>
+                <input type="text" id="correoInstitucional" name="correoInstitucional" th:field="*{correoInstitucional}"
+                       placeholder="tu.correo@uce.edu.ec" required>
+            </div>
+
+            <div class="form-group">
+                <label for="rol">Tipo de Usuario <span style="color: #c33;">*</span></label>
+                <select id="rol" name="rol" th:field="*{rol}" required>
+                    <option value="">-- Selecciona tu rol --</option>
+                    <option value="PROFESOR">👨‍🏫 Profesor</option>
+                    <option value="ESTUDIANTE">👨‍🎓 Estudiante</option>
+                    <option value="PERSONAL_LABORATORIO">🛠️ Personal de Laboratorio</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="contrasena">Contraseña <span style="color: #c33;">*</span></label>
+                <input type="password" id="contrasena" name="contrasena" th:field="*{contrasena}"
+                       placeholder="Mínimo 4 caracteres" required>
+            </div>
+
+            <div class="form-group">
+                <label for="confirmarContrasena">Confirmar Contraseña <span style="color: #c33;">*</span></label>
+                <input type="password" id="confirmarContrasena" name="confirmarContrasena" th:field="*{confirmarContrasena}"
+                       placeholder="Repite tu contraseña" required>
+            </div>
+
+            <button type="submit" class="btn-registro">Crear Cuenta</button>
+            <a href="/login" style="text-decoration: none;">
+                <button type="button" class="btn-volver">Volver al Inicio de Sesión</button>
+            </a>
+        </form>
+
+        <div class="roles-description">
+            <strong>¿Qué rol te corresponde?</strong>
+            <div class="role-item">
+                <strong>👨‍🏫 Profesor:</strong> Gestiona bloques horarios, habilita asistencias y supervisa laboratorios
+            </div>
+            <div class="role-item">
+                <strong>👨‍🎓 Estudiante:</strong> Registra tu asistencia y reporta novedades de equipos
+            </div>
+            <div class="role-item">
+                <strong>🛠️ Personal de Laboratorio:</strong> Audita incidencias y gestiona la infraestructura
+            </div>
+        </div>
+
+        <div class="footer-registro">
+            <p>&copy; 2026 Universidad Central del Ecuador - Laboratorios</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LabCheck - Dashboard Profesor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar h1 {
+            font-size: 24px;
+        }
+
+        .navbar-links {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .navbar-links a {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            transition: opacity 0.3s;
+        }
+
+        .navbar-links a:hover {
+            opacity: 0.8;
+        }
+
+        .btn-logout {
+            background-color: #ff6b6b;
+            padding: 8px 15px;
+            border-radius: 5px;
+            text-decoration: none;
+            color: white;
+            font-size: 13px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .header-section {
+            margin-bottom: 30px;
+        }
+
+        .header-section h2 {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .alert-error {
+            background-color: #fee;
+            color: #c33;
+            border: 1px solid #fcc;
+        }
+
+        .alert-success {
+            background-color: #efe;
+            color: #3c3;
+            border: 1px solid #cfc;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: transform 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-primary {
+            background-color: #667eea;
+            color: white;
+        }
+
+        .btn-secondary {
+            background-color: #f0f0f0;
+            color: #333;
+            border: 1px solid #ddd;
+        }
+
+        .btn-danger {
+            background-color: #ff6b6b;
+            color: white;
+        }
+
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .card p {
+            color: #666;
+            font-size: 13px;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+
+        .card-actions {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .form-section {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .form-section h3 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 18px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #333;
+            font-size: 14px;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 5px rgba(102, 126, 234, 0.1);
+        }
+
+        .table-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        table th {
+            background-color: #f5f5f5;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #ddd;
+        }
+
+        table td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        table tr:hover {
+            background-color: #fafafa;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-activo {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .badge-cerrado {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .badge-expirado {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+<nav class="navbar">
+    <h1>🏫 LabCheck</h1>
+    <div class="navbar-links">
+        <a href="/profesor">Dashboard</a>
+        <a href="/profesor/nuevo-bloque">Nuevo Bloque</a>
+        <span th:if="${session.currentUserNombre != null}" style="margin-left: 12px; font-weight:600;">Bienvenido, <span th:text="${session.currentUserNombre}"></span></span>
+        <a href="/logout" class="btn-logout">Cerrar Sesión</a>
+    </div>
+</nav>
+
+<div class="container">
+    <div class="header-section">
+        <h2 th:text="${titulo} ?: 'Dashboard del Profesor'"></h2>
+    </div>
+
+    <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+    <div th:if="${exito}" class="alert alert-success" th:text="${exito}"></div>
+
+    <!-- Formulario para abrir nuevo bloque (si el usuario es profesor) -->
+    <div class="form-section" th:if="${session.currentUserRol} == 'PROFESOR'">
+        <h3>Abrir Nuevo Bloque Horario</h3>
+        <form th:action="@{/profesor/abrir-bloque}" method="post">
+            <div class="form-group">
+                <label for="salaId">ID Sala</label>
+                <input type="number" id="salaId" name="salaId" required>
+            </div>
+
+            <div class="form-group">
+                <label for="asignaturaId">ID Asignatura</label>
+                <input type="number" id="asignaturaId" name="asignaturaId" required>
+            </div>
+
+            <div class="form-group" style="display:none;">
+                <label for="profesorId">ID Profesor (oculto)</label>
+                <input type="number" id="profesorId" name="profesorId" th:value="${session.currentUserId}">
+            </div>
+
+            <div class="form-group">
+                <label for="horaInicio">Hora Inicio</label>
+                <input type="datetime-local" id="horaInicio" name="horaInicio" required>
+            </div>
+
+            <div class="form-group">
+                <label for="horaFin">Hora Fin</label>
+                <input type="datetime-local" id="horaFin" name="horaFin" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Crear Bloque</button>
+        </form>
+    </div>
+
+    <div th:if="${bloquesHorarios != null}" class="table-container">
+        <h3>Bloques Horarios Activos</h3>
+        <table>
+            <thead>
+            <tr>
+                <th>ID Bloque</th>
+                <th>Sala</th>
+                <th>Estado</th>
+                <th>Asistencias</th>
+                <th>Acciones</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="bloque : ${bloquesHorarios}">
+                <td th:text="${bloque.id}"></td>
+                <td th:text="${bloque.salaId}"></td>
+                <td th:text="${bloque.asignaturaId}"></td>
+                <td th:text="${#temporals.format(bloque.rangoTiempo.horaInicio, 'HH:mm')} + ' - ' + ${#temporals.format(bloque.rangoTiempo.horaFin, 'HH:mm')}"></td>
+                <td>
+                    <span th:text="${bloque.estado}" class="badge"></span>
+                </td>
+                <td th:text="${bloque.asistencias.size()}"></td>
+                <td>
+                    <a th:href="@{/profesor/bloque/{id}/asistencias(id=${bloque.id})}" class="btn btn-secondary">Ver</a>
+
+                    <form th:action="@{/profesor/habilitar-asistencia/{id}(id=${bloque.id})}" method="post"
+                          style="display: inline;"
+                          th:if="${bloque.estado.toString() == 'INACTIVO'}">
+                        <button type="submit" class="btn btn-success">Habilitar Asistencia</button>
+                    </form>
+
+                    <form th:action="@{/profesor/cerrar-bloque/{id}(id=${bloque.id})}" method="post"
+                          style="display: inline;"
+                          th:if="${bloque.estado.toString() == 'ACTIVO'}">
+                        <button type="submit" class="btn btn-danger">Cerrar Bloque</button>
+                    </form>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div th:if="${asistencias != null}" class="table-container" style="margin-top: 30px;">
+        <h3>Asistencias Registradas</h3>
+        <table>
+            <thead>
+            <tr>
+                <th>ID Estudiante</th>
+                <th>Computador</th>
+                <th>Hora Registro</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="asistencia : ${asistencias}">
+                <td th:text="${asistencia.estudianteId}"></td>
+                <td th:text="${asistencia.pcCodigo}"></td>
+                <td th:text="${#temporals.format(asistencia.fechaRegistro, 'HH:mm:ss')}"></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>
